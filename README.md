@@ -42,7 +42,7 @@ Using this tool without modification in production is strongly discorouged.
 
    The [klaytn-ansible](https://github.com/klaytn/klaytn-ansible) module runs `ansible` to install and configure
    Klaytn nodes in the newly deployed VMs.
-   The **klaytn-ansible** has two roles:
+   The **klaytn-ansible** has three roles:
    - `klaytn_node`:
 
       To configure newly deployed VMs, the `klaytn_node` role installs required packages,
@@ -55,6 +55,11 @@ Using this tool without modification in production is strongly discorouged.
       Also, the `klaytn_bridge` role generates `bridge_info.json` that contains
       the information for newly deployed bridge and will be used to test value transfer
       by **value-transfer**.
+   - `klaytn_grafana`:
+
+      The `klaytn_grafana` configures the deployed Grafana instance to collect metrics
+      from running Klaytn nodes to monitor their state.
+      Also, it installs and configures Telegraf in the Klaytn nodes to collect log metrics.
 
 3. value-transfer
 
@@ -484,6 +489,61 @@ requestValueTransfer..
 alice balance: 100
 ------------------------- erc20-transfer-1step END -------------------------
 ```
+
+### Monitoring Klaytn nodes with Grafana
+
+After you have successfully deploy ed and configured Klaytn and ServiceChain nodes,
+you may want to monitor their states. Klaytn supports built-in Prometheus metrics
+that can be collected and used to monitor its state. The `klaytn_grafana` role of
+**klaytn-ansible** suppports configuring a Grafana instance to collect such metrics
+from running Klaytn nodes. Also, `klaytn_grafana` role installs and configures Telegraf
+in the Klaytn nodes to collect log metrics and monitor them in Grafana.
+
+**NOTE** Currently only `deploy-4scn` has configuration for deploying the Grafana instance.
+
+Suppose you have deployed and configured 1 EN + 4 SCNs using `run-en-4scn.sh`.
+To deploy a new VM instance for Grafana, update `grafana_instance_count` in `terraform.tfvars`.
+
+```
+$ cd klaytn-terraform/service-chain-aws/deploy-4scn
+$ vi terraform.tfvars
+
+...
+grafana_instance_count = "1"
+
+```
+
+Then, apply updated `terraform.tfvars`.
+
+```
+$ terraform apply
+# below command takes you back to the project root
+$ cd ../../..
+```
+
+Now, create a new inventory file for `klaytn_grafana` role for **klaytn-ansible**.
+For example,
+```
+$ cp klaytn-ansible/roles/klaytn_grafana/inventory ./inventory.grafana
+$ vi inventory.grafana
+[Grafana]
+GRAFANA0 ansible_host=1.2.3.4 ansible_user=centos
+
+[KlaytnNode]
+EN0 ansible_host=5.6.7.8 ansible_user=ec2-user
+SCN0 ansible_host=6.7.8.9 ansible_user=centos
+SCN1 ansible_host=6.7.8.10 ansible_user=centos
+SCN2 ansible_host=6.7.8.11 ansible_user=centos
+SCN3 ansible_host=6.7.8.12 ansible_user=centos
+```
+
+Now, run **klaytn-ansible** with `klaytn_grafana` role using provided script.
+```
+$ ./setup-grafana.sh
+```
+
+After the script was successfully run, navigate to the Grafana web UI using your web browser.
+The address would be `http://<Grafana instance public IP>:3000`. The default ID/PW is admin/admin.
 
 ## Terminate
 
